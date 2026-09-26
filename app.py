@@ -147,7 +147,7 @@ with col1:
     
     if uploaded:
         img = Image.open(uploaded)
-        st.image(img, caption="Input", use_column_width=True)
+        st.image(img, caption="Input", use_container_width=True)
         detect = st.button("🔍 Detect", key="detect", use_container_width=True)
 
 with col2:
@@ -157,7 +157,7 @@ with col2:
             result_img, result_data = process_image(img)
             
             if result_img is not None:
-                st.image(result_img, caption="Detected", use_column_width=True)
+                st.image(result_img, caption="Detected", use_container_width=True)
                 
                 if result_data.get("status") == "success":
                     st.success(f"✅ Found {result_data['count']} landmarks!")
