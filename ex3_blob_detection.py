@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 import mediapipe as mp
 from PIL import Image
 import pillow_heif
@@ -7,8 +6,6 @@ import argparse
 import torch
 import math
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 
