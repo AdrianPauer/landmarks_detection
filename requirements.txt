@@ -1,7 +1,7 @@
 streamlit
 opencv-python-headless
-numpy
-mediapipe == 0.14.0
+numpy<2.0.0
+mediapipe == 0.10.14
 Pillow
 pillow-heif
-torch
+pytorch
