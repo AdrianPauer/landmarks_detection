@@ -184,7 +184,7 @@ def process_image(image_input):
         res = find_blobs(foreground)
         deduplicated_points = deduplicate_points(np.array(res), min_cluster_size=20)
         separated, pairs, midpoints = separate_appropriate_points(deduplicated_points)
-        output = image_input.copy()
+        output = image_rgb.copy()
 
         # draw separated points
         for pt in separated:
