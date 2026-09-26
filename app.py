@@ -6,6 +6,8 @@ Detects anatomical landmarks in body images
 import os
 
 os.environ['OPENCV_VIDEOIO_DEBUG'] = '0'
+os.environ["MEDIAPIPE_CACHE_DIR"] = "/tmp/mediapipe_cache"
+os.environ["TMPDIR"] = "/tmp"
 
 import streamlit as st
 import cv2
