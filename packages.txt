@@ -1,9 +1,0 @@
-libsm6
-libxrender1
-libxext6
-libgomp1
-libglib2.0-0
-libxkbcommon0
-libgles2-mesa
-libxfixes3
-
