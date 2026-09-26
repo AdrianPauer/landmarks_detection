@@ -44,8 +44,6 @@ def find_blobs(hsv_image):
         # Clean up noise
         kernel = np.ones((3, 3), np.uint8)
         white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
-        cv2.imwrite(args.image_path[:-5] + f"{saturation}_analyzed.jpg", white_mask)
-
 
         radius = 12
         template_size = radius * 2 + 4
