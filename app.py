@@ -133,21 +133,40 @@ def process_image(image_input):
         #     "count": len(separated),
         #     "data": results_dict
         # }
-        mp_selfie = mp.solutions.selfie_segmentation
-        mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
-        mp_drawing_styles = mp.solutions.drawing_styles
-
-        # load the image
         image_rgb = cv2.cvtColor(np.array(image_input), cv2.COLOR_BGR2RGB)
-        with mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5, model_complexity=2,
-                          enable_segmentation=True) as pose:
-            results = pose.process(image_rgb)
+        MODEL_PATH = os.path.join(os.path.dirname(__file__), "pose_landmarker_heavy.task")
+        BaseOptions = mp.tasks.BaseOptions
+        PoseLandmarker = mp.tasks.vision.PoseLandmarker
+        PoseLandmarkerOptions = mp.tasks.vision.PoseLandmarkerOptions
+        VisionRunningMode = mp.tasks.vision.RunningMode
 
-        if results.segmentation_mask is not None:
-            body_mask = (results.segmentation_mask > 0.6).astype(np.uint8) * 255
+        options = PoseLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=MODEL_PATH),
+            running_mode=VisionRunningMode.IMAGE,
+            min_pose_detection_confidence=0.5,
+            output_segmentation_masks=True  # Enables segmentation mask equivalent
+        )
 
-        mask = results.segmentation_mask > 0.6
+        with PoseLandmarker.create_from_options(options) as landmarker:
+            results = landmarker.detect(image_rgb)
+
+        # 4. Extract segmentation mask
+        if results.segmentation_masks:
+            # Convert MediaPipe Image mask to NumPy float array
+            segmentation_mask = results.segmentation_masks[0].numpy_view()
+            mask = (segmentation_mask > 0.6).astype(np.uint8) * 255
+
+        # mp_pose = mp.solutions.pose
+        #
+        # # load the image
+        # image_rgb = cv2.cvtColor(np.array(image_input), cv2.COLOR_BGR2RGB)
+        # with mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5, model_complexity=2,
+        #                   enable_segmentation=True) as pose:
+        #     results = pose.process(image_rgb)
+        #
+        # if results.segmentation_mask is not None:
+        #     mask = (results.segmentation_mask > 0.6).astype(np.uint8) * 255
+
         foreground = np.where(mask[..., None], image_input, 0)
 
         h, w, _ = image_input.shape
