@@ -230,7 +230,7 @@ with col2:
                 # else:
                 #     st.error(result_data.get('error', '❌ Processing failed'))
             else:
-                st.error(result_data['error'])
+                st.error(result_data['error'] + str(mp.__version__))
 
         st.session_state.process = False
 
