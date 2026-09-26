@@ -132,7 +132,8 @@ def process_image(image_input, max_size=800):
         }
         
     except Exception as e:
-        return None, {"error": f"❌ Processing failed: {str(e)[:50]}"}
+        import traceback
+        return None, {"error": f"❌ Error: {str(e)[:100]}"}
 
 
 # UI
@@ -148,37 +149,62 @@ with col1:
     if uploaded:
         img = Image.open(uploaded)
         st.image(img, caption="Input", use_container_width=True)
-        detect = st.button("🔍 Detect", key="detect", use_container_width=True)
+        
+        if st.button("🔍 Detect Landmarks", use_container_width=True):
+            st.session_state.process = True
 
 with col2:
     st.subheader("📊 Results")
-    if uploaded and detect:
-        with st.spinner("Processing... (this may take 10-30 seconds)"):
+    
+    if uploaded and st.session_state.get("process", False):
+        with st.spinner("⏳ Processing image (30-60 seconds)..."):
+            img = Image.open(uploaded)
+            print('image processed', 100 * '-')
             result_img, result_data = process_image(img)
             
             if result_img is not None:
-                st.image(result_img, caption="Detected", use_container_width=True)
+                st.image(result_img, caption="Detected Landmarks", use_container_width=True)
                 
                 if result_data.get("status") == "success":
                     st.success(f"✅ Found {result_data['count']} landmarks!")
                     
-                    # Show data
-                    for label, data in result_data["data"].items():
-                        st.write(f"**{label}**: Left {data['left_pct']}% | Right {data['right_pct']}%")
+                    # Show data in expander
+                    with st.expander("📋 Landmark Details"):
+                        for label, data in result_data["data"].items():
+                            st.write(f"**{label}**  \nLeft: {data['left_pct']}% | Right: {data['right_pct']}%")
                     
                     # Download
                     buf = BytesIO()
                     Image.fromarray(result_img).save(buf, format="PNG")
                     buf.seek(0)
-                    st.download_button("📥 Download", buf, "result.png", "image/png", use_container_width=True)
+                    st.download_button(
+                        "📥 Download Result", 
+                        buf, 
+                        "blob_detection_result.png", 
+                        "image/png",
+                        use_container_width=True
+                    )
                 else:
-                    st.error(result_data.get('error', 'Error'))
+                    st.error(result_data.get('error', '❌ Processing failed'))
+            else:
+                st.error("❌ Failed to process image")
+        
+        st.session_state.process = False
 
 st.divider()
 st.markdown("""
-**💡 Tips for best results:**
-- Full body visible from behind
-- Good lighting
-- Plain background
-- Clear, high-quality photo
+### 💡 Tips for best results:
+- **Full body visible** from behind
+- **Good lighting** (no shadows)
+- **Plain background** (white or neutral color)
+- **Clear landmarks** visible on skin
+- High-quality photo (at least 640x480)
+
+### 📍 Detected Landmarks:
+- Knees
+- Dimples of Venus
+- Angulus Inferior Scapulae
+- Margo Lateralis Acromialis
+- Epicondyle
+- Processus Styloideus
 """)
