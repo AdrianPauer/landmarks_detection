@@ -1,6 +1,6 @@
-streamlit==1.40.0
+streamlit
 opencv-python-headless
-numpy==1.26.4
-mediapipe==0.14.0
-Pillow==11.0.0
-pillow-heif==0.16.0
+numpy<2.0.0
+mediapipe
+Pillow
+pillow-heif
