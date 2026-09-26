@@ -14,6 +14,8 @@ import mediapipe as mp
 from PIL import Image
 import pillow_heif
 from io import BytesIO
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Register HEIF opener
 pillow_heif.register_heif_opener()
