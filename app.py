@@ -133,7 +133,7 @@ def process_image(image_input):
         #     "count": len(separated),
         #     "data": results_dict
         # }
-        image_rgb = cv2.cvtColor(np.array(image_input), cv2.COLOR_BGR2RGB)
+        image_rgb = np.ascontiguousarray(np.array(image_input), dtype=np.uint8)
         MODEL_PATH = os.path.join(os.path.dirname(__file__), "pose_landmarker_heavy.task")
         BaseOptions = mp.tasks.BaseOptions
         PoseLandmarker = mp.tasks.vision.PoseLandmarker
@@ -189,6 +189,7 @@ def process_image(image_input):
         # draw separated points
         for pt in separated:
             cv2.circle(output, pt, 4,(0, 255, 0), -1)
+
 
         return output, {
             "status": "success",
