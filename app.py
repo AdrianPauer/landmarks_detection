@@ -170,7 +170,7 @@ def process_image(image_input):
 
         foreground = np.where(mask[..., None], image_input, 0)
 
-        h, w, _ = image_input.shape
+        h, w, _ = image_rgb.shape
         head_points = []
         if results.pose_landmarks:
             landmarks = results.pose_landmarks.landmark
