@@ -1,7 +1,7 @@
 streamlit
 opencv-python-headless
 numpy
-mediapipe
+mediapipe == 0.14.0
 Pillow
 pillow-heif
 torch
