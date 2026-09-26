@@ -4,4 +4,4 @@ numpy<2.0.0
 mediapipe
 Pillow
 pillow-heif
-pytorch
+torch
