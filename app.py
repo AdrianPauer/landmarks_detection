@@ -147,8 +147,9 @@ def process_image(image_input):
             output_segmentation_masks=True  # Enables segmentation mask equivalent
         )
 
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
         with PoseLandmarker.create_from_options(options) as landmarker:
-            results = landmarker.detect(image_rgb)
+            results = landmarker.detect(mp_image)
 
         # 4. Extract segmentation mask
         if results.segmentation_masks:
