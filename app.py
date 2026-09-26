@@ -173,7 +173,7 @@ def process_image(image_input):
         h, w, _ = image_rgb.shape
         head_points = []
         if results.pose_landmarks:
-            landmarks = results.pose_landmarks.landmark
+            landmarks = results.pose_landmarks[0]
             for idx, lm in enumerate(landmarks):
                 px, py = int(lm.x * w), int(lm.y * h)
                 head_points.append([px, py])
