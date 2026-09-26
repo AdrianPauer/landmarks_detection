@@ -208,29 +208,29 @@ with col2:
             if result_img is not None:
                 st.image(result_img, caption="Detected Landmarks", use_container_width=True)
 
-                if result_data.get("status") == "success":
-                    st.success(f"✅ Found {result_data['count']} landmarks!")
-
-                    # # Show data in expander
-                    # with st.expander("📋 Landmark Details"):
-                    #     for label, data in result_data["data"].items():
-                    #         st.write(f"**{label}**  \nLeft: {data['left_pct']}% | Right: {data['right_pct']}%")
-
-                    # Download
-                    buf = BytesIO()
-                    Image.fromarray(result_img).save(buf, format="JPG")
-                    buf.seek(0)
-                    st.download_button(
-                        "📥 Download Result",
-                        buf,
-                        "blob_detection_result.png",
-                        "image/png",
-                        use_container_width=True
-                    )
-                else:
-                    st.error(result_data.get('error', '❌ Processing failed'))
+                # if result_data.get("status") == "success":
+                #     st.success(f"✅ Found {result_data['count']} landmarks!")
+                #
+                #     # # Show data in expander
+                #     # with st.expander("📋 Landmark Details"):
+                #     #     for label, data in result_data["data"].items():
+                #     #         st.write(f"**{label}**  \nLeft: {data['left_pct']}% | Right: {data['right_pct']}%")
+                #
+                #     # Download
+                #     buf = BytesIO()
+                #     Image.fromarray(result_img).save(buf, format="JPG")
+                #     buf.seek(0)
+                #     st.download_button(
+                #         "📥 Download Result",
+                #         buf,
+                #         "blob_detection_result.png",
+                #         "image/png",
+                #         use_container_width=True
+                #     )
+                # else:
+                #     st.error(result_data.get('error', '❌ Processing failed'))
             else:
-                st.error("❌ Failed to process image")
+                st.error(result_data['error'])
 
         st.session_state.process = False
 
