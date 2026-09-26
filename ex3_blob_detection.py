@@ -192,9 +192,6 @@ if __name__ == "__main__":
     # choose mask with biggest area
     areas = [mask.sum() for mask in masks]
     best_mask = masks[np.argmax(areas)].astype(np.uint8) * 255
-    overlay = np.zeros_like(image)
-    overlay[best_mask > 0] = [0, 255, 0]  # green where mask is present
-
     foreground = np.where(best_mask[..., None], image, 0)
 
     head_points = []
@@ -265,32 +262,32 @@ if __name__ == "__main__":
     p_end = (int(average_head_point[0] + dir_x * line_length), int(average_head_point[1] + dir_y * line_length))
     cv2.line(output, p_start, p_end, (255, 0, 0), 4)
 
-    pt3,pt4 = labeled_points['margo_lateralis_acromialis']
-    points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
-
-    mask = np.zeros(best_mask.shape[:2], dtype=np.uint8)
-    cv2.fillPoly(mask, [points], 255)
-
-    head_areas_mask = cv2.bitwise_and(255-best_mask, mask)
-    output[head_areas_mask == 255, 0] = 255
-    output[head_areas_mask == 255, 1] = 255
-    output[head_areas_mask == 255, 2] = 0
-
-    ys, xs = np.where(head_areas_mask > 0)
-    coords = np.column_stack((xs, ys))
-    group_right = coords[coords[:, 0] < average_head_point[0]]
-    group_left = coords[coords[:, 0] > average_head_point[0]]
-
-    # compute percentages
-    if len(group_left) > 0 and len(group_right) > 0:
-        gr_pcts = len(group_right) / (len(group_right) + len(group_left)) * 100
-        gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
-        cv2.putText(output, f'{gr_pcts:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255),1, cv2.LINE_AA)
-        cv2.putText(output, f'{gl_pcts:.2f} %', group_left.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1,cv2.LINE_AA)
-    elif len(group_right) > 0 :
-        cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
-    elif len(group_left) > 0 :
-        cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
+    # pt3,pt4 = labeled_points['margo_lateralis_acromialis']
+    # points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
+    #
+    # mask = np.zeros(best_mask.shape[:2], dtype=np.uint8)
+    # cv2.fillPoly(mask, [points], 255)
+    #
+    # head_areas_mask = cv2.bitwise_and(255-best_mask, mask)
+    # output[head_areas_mask == 255, 0] = 255
+    # output[head_areas_mask == 255, 1] = 255
+    # output[head_areas_mask == 255, 2] = 0
+    #
+    # ys, xs = np.where(head_areas_mask > 0)
+    # coords = np.column_stack((xs, ys))
+    # group_right = coords[coords[:, 0] < average_head_point[0]]
+    # group_left = coords[coords[:, 0] > average_head_point[0]]
+    #
+    # # compute percentages
+    # if len(group_left) > 0 and len(group_right) > 0:
+    #     gr_pcts = len(group_right) / (len(group_right) + len(group_left)) * 100
+    #     gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
+    #     cv2.putText(output, f'{gr_pcts:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255),1, cv2.LINE_AA)
+    #     cv2.putText(output, f'{gl_pcts:.2f} %', group_left.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1,cv2.LINE_AA)
+    # elif len(group_right) > 0 :
+    #     cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
+    # elif len(group_left) > 0 :
+    #     cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
 
 
     cv2.circle(output, (int(average_head_point[0]), int(average_head_point[1])), 6, (255, 255, 0), -1)
