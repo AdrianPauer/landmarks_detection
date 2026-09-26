@@ -137,7 +137,7 @@ def process_image(image_input):
         mp_drawing_styles = mp.solutions.drawing_styles
 
         # load the image
-        image_rgb = cv2.cvtColor(image_input, cv2.COLOR_BGR2RGB)
+        image_rgb = cv2.cvtColor(np.array(image_input), cv2.COLOR_BGR2RGB)
         with mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5, model_complexity=2,
                           enable_segmentation=True) as pose:
             results = pose.process(image_rgb)
