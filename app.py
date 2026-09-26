@@ -33,13 +33,9 @@ st.set_page_config(
     layout="wide"
 )
 
-def process_image(image_input, max_size=800):
+def process_image(image_input):
     """Process image - detect blob landmarks"""
     try:
-        # Resize for performance
-        if image_input.size[0] > max_size or image_input.size[1] > max_size:
-            image_input.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-        
         # Convert to numpy
         image = cv2.cvtColor(np.array(image_input), cv2.COLOR_RGB2BGR)
         h, w, _ = image.shape
