@@ -60,11 +60,7 @@ def process_image(image_input):
             results = landmarker.detect(mp_image)
 
         # 4. Extract segmentation mask
-        if results.segmentation_masks:
-            # Convert MediaPipe Image mask to NumPy float array
-            segmentation_mask = results.segmentation_masks[0].numpy_view()
-            mask = (segmentation_mask > 0.8).astype(np.uint8) * 255
-        else:
+        if results.segmentation_masks is None:
             return None, {"error": "❌ No body detected. Try another photo."}
 
         # identify head point
@@ -167,7 +163,6 @@ def process_image(image_input):
         pt1, pt2 = labeled_points['processus_styloideus']
         dx = pt2[0] - pt1[0]
         dy = pt2[1] - pt1[1]
-        length = math.hypot(dx, dy)
         dir_x = dx
         dir_y = dy
         line_length = 0.4
@@ -221,7 +216,7 @@ def process_image(image_input):
 
     except Exception as e:
         import traceback
-        return None, {"error": f"❌ Error: {str(e)[:100]}"}
+        return output, {"error": f"❌ Error: {str(e)[:100]}"}
 
 
 # UI
