@@ -5,4 +5,5 @@ mediapipe == 0.10.14
 Pillow
 pillow-heif
 torch
+timm
 git+https://github.com/ChaoningZhang/MobileSAM.git
