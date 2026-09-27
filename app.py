@@ -158,7 +158,7 @@ def process_image(image_input):
         cv2.line(output, sc_2, dv_2, (0, 255, 0), 2)
 
         # draw a head point
-        cv2.circle(output, (int(average_head_point[0]), int(average_head_point[1])), 6, (255, 255, 0), -1)
+        #cv2.circle(output, (int(average_head_point[0]), int(average_head_point[1])), 6, (255, 255, 0), -1)
 
         pt1, pt2 = labeled_points['processus_styloideus']
         dx = pt2[0] - pt1[0]
@@ -169,7 +169,7 @@ def process_image(image_input):
 
         p_start = (int(average_head_point[0] - dir_x * line_length), int(average_head_point[1] - dir_y * line_length))
         p_end = (int(average_head_point[0] + dir_x * line_length), int(average_head_point[1] + dir_y * line_length))
-        cv2.line(output, p_start, p_end, (255, 0, 0), 4)
+        #cv2.line(output, p_start, p_end, (255, 0, 0), 4)
 
         pt3,pt4 = labeled_points['margo_lateralis_acromialis']
         points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
@@ -193,12 +193,12 @@ def process_image(image_input):
             gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
 
             # Cast mean numpy arrays to python tuples of ints
-            right_org = tuple((group_right.mean(axis=0) + np.array([0,50])).astype(int))
-            left_org = tuple((group_left.mean(axis=0).astype(int) + np.array([0,50])))
+            right_org = tuple((group_right.mean(axis=0) + np.array([0,60])).astype(int))
+            left_org = tuple((group_left.mean(axis=0).astype(int) + np.array([0,60])))
 
-            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 1,
+            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2,
                         cv2.LINE_AA)
-            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 1,
+            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2,
                         cv2.LINE_AA)
 
         elif len(group_right) > 0:
