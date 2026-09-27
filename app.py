@@ -243,7 +243,7 @@ def process_image(image_input):
         points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
 
         poly_mask = np.zeros(mask.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(mask, [points], 255)
+        cv2.fillPoly(poly_mask, [points], 255)
 
         head_areas_mask = cv2.bitwise_and(255-mask, poly_mask)
         output[head_areas_mask == 255, 0] = 255
