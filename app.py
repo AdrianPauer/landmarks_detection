@@ -259,12 +259,22 @@ def process_image(image_input):
         if len(group_left) > 0 and len(group_right) > 0:
             gr_pcts = len(group_right) / (len(group_right) + len(group_left)) * 100
             gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
-            cv2.putText(output, f'{gr_pcts:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255),1, cv2.LINE_AA)
-            cv2.putText(output, f'{gl_pcts:.2f} %', group_left.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1,cv2.LINE_AA)
-        elif len(group_right) > 0 :
-            cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
-        elif len(group_left) > 0 :
-            cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
+
+            # Cast mean numpy arrays to python tuples of ints
+            right_org = tuple(group_right.mean(axis=0).astype(int))
+            left_org = tuple(group_left.mean(axis=0).astype(int))
+
+            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,
+                        cv2.LINE_AA)
+            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,
+                        cv2.LINE_AA)
+
+        elif len(group_right) > 0:
+            right_org = tuple(group_right.mean(axis=0).astype(int))
+            cv2.putText(output, f'{100:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+        elif len(group_left) > 0:
+            left_org = tuple(group_left.mean(axis=0).astype(int))
+            cv2.putText(output, f'{100:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
         return output, {
             "status": "success",
