@@ -213,7 +213,7 @@ def process_image(image_input):
             left_org = tuple(group_left.mean(axis=0).astype(int))
             cv2.putText(output, f'{100:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
-        return foreground, {
+        return output, {
             "status": "success",
             "count": len(separated),
             "data": dict()
