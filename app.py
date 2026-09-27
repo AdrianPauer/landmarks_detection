@@ -242,7 +242,6 @@ def process_image(image_input):
         pt3,pt4 = labeled_points['margo_lateralis_acromialis']
         points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
 
-
         poly_mask = np.zeros(mask.shape[:2], dtype=np.uint8)
         cv2.fillPoly(mask, [points], 255)
 
@@ -267,7 +266,7 @@ def process_image(image_input):
         elif len(group_left) > 0 :
             cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
 
-        return output, {
+        return mask, {
             "status": "success",
             "count": len(separated),
             "data": dict()
@@ -301,7 +300,6 @@ with col2:
     if uploaded and st.session_state.get("process", False):
         with st.spinner("⏳ Processing image (30-60 seconds)..."):
             img = Image.open(uploaded)
-            print('image processed', 100 * '-')
             result_img, result_data = process_image(img)
 
             if result_img is not None:
