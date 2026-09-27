@@ -87,6 +87,8 @@ def process_image(image_input):
             [int(right_hip.x * w), int(right_hip.y * h)]
         ]
         hip_point = np.array(hip_points).mean(axis=0)
+        hx, hy = int(hip_point[0]), int(hip_point[1])
+        point_coords = np.array([[hx, hy]], dtype=np.float32)
 
         # sam_mask
         model_type = "vit_t"
@@ -100,7 +102,7 @@ def process_image(image_input):
 
         with torch.inference_mode():
             predictor.set_image(image_rgb)
-            masks, scores, logits = predictor.predict(point_coords=hip_point, point_labels=point_labels,
+            masks, scores, logits = predictor.predict(point_coords=point_coords, point_labels=point_labels,
                                                       multimask_output=True)
         # choose mask with biggest area
         areas = [mask.sum() for mask in masks]
