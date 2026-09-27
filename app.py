@@ -155,18 +155,9 @@ def process_image(image_input):
         if results.segmentation_masks:
             # Convert MediaPipe Image mask to NumPy float array
             segmentation_mask = results.segmentation_masks[0].numpy_view()
-            mask = (segmentation_mask > 0.6).astype(np.uint8) * 255
-
-        # mp_pose = mp.solutions.pose
-        #
-        # # load the image
-        # image_rgb = cv2.cvtColor(np.array(image_input), cv2.COLOR_BGR2RGB)
-        # with mp_pose.Pose(static_image_mode=True, min_detection_confidence=0.5, model_complexity=2,
-        #                   enable_segmentation=True) as pose:
-        #     results = pose.process(image_rgb)
-        #
-        # if results.segmentation_mask is not None:
-        #     mask = (results.segmentation_mask > 0.6).astype(np.uint8) * 255
+            mask = (segmentation_mask > 0.7).astype(np.uint8) * 255
+        else:
+            return None, {"error": "❌ No body detected. Try another photo."}
 
         foreground = np.where(mask[..., None], image_input, 0)
 
@@ -186,10 +177,47 @@ def process_image(image_input):
         separated, pairs, midpoints = separate_appropriate_points(deduplicated_points)
         output = image_rgb.copy()
 
+
+        if len(separated) != 12:
+            for pt in separated:
+                cv2.circle(output, pt, 7, (0, 255, 0), -1)
+            return output, {"error": f'detected {len(separated)} points istead of 12 ...'}
+
+        # label points
+
+        sorted_values = [v for _, v in sorted(zip(midpoints, pairs), key=lambda t: t[0][1])]
+        sorted_midpoints = sorted(midpoints, key=lambda t: t[1])
+
+        labeled_points = dict(zip(LABELS, sorted_values))
+
+        # draw a line between the points
+        for i in range(len(pairs)):
+            c1, c2 = pairs[i]
+            cv2.line(output, c1, c2, (0, 255, 0), 2)
+
         # draw separated points
         for pt in separated:
-            cv2.circle(output, pt, 4,(0, 255, 0), -1)
+            cv2.circle(output, pt, 4, (0, 255, 0), -1)
 
+        # draw labels for the points
+        for k, v in labeled_points.items():
+            mid_x, mid_y, l_pcts, r_pcts = compute_percentage(v)
+            cv2.putText(output, k, (v[1][0] + 40, v[1][1]), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 255), 2,
+                        cv2.LINE_AA)
+            mid_lx, mid_ly = (v[0][0] + mid_x) // 2, (v[0][1] + mid_y) // 2
+            mid_rx, mid_ry = (v[1][0] + mid_x) // 2, (v[1][1] + mid_y) // 2
+
+            cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 50, mid_ly + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 50, mid_ry + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1, cv2.LINE_AA)
+
+        # connect (draw lines )dimples of Venus and scapula
+        sc_1, sc_2 = labeled_points['angulus_inferior_scapulae']
+        dv_1, dv_2 = labeled_points['dimples_of_Venus']
+        cv2.line(output, sc_1, dv_1, (0, 255, 0), 2)
+        cv2.line(output, sc_2, dv_2, (0, 255, 0), 2)
+
+        # draw a head point
+        cv2.circle(output, (int(average_head_point[0]), int(average_head_point[1])), 6, (255, 255, 0), -1)
 
         return output, {
             "status": "success",
