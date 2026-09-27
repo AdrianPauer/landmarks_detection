@@ -15,7 +15,7 @@ from PIL import Image
 import pillow_heif
 from mobile_sam import sam_model_registry, SamPredictor
 import sys
-import math
+from io import BytesIO
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Register HEIF opener
