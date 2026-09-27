@@ -214,8 +214,8 @@ def process_image(image_input):
         for i in range(len(sorted_midpoints)-1):
             mid1,mid2 = sorted_midpoints[i],sorted_midpoints[i+1]
             #cv2.line(output, mid1, mid2, (0, 255, 0), 2)
-            cv2.circle(output, mid1, 2, (0, 0, 255), 5)
-            cv2.circle(output, mid2, 2, (0, 0, 255), 5)
+            cv2.circle(output, mid1, 2, (255, 0, 0), 5)
+            cv2.circle(output, mid2, 2, (255, 0, 0), 5)
 
         # connect (draw lines )dimples of Venus and scapula
         sc_1, sc_2 = labeled_points['angulus_inferior_scapulae']
