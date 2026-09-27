@@ -61,7 +61,7 @@ def process_image(image_input):
 
         # 4. Extract segmentation mask
         if results.segmentation_masks is None:
-            return None, {"error": "❌ No body detected. Try another photo."}
+            return None, {"error": "❌ Seems like no human is on photo. Try another photo."}
 
         # identify head point
         h, w, _ = image_rgb.shape
@@ -193,20 +193,20 @@ def process_image(image_input):
             gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
 
             # Cast mean numpy arrays to python tuples of ints
-            right_org = tuple(group_right.mean(axis=0).astype(int))
-            left_org = tuple(group_left.mean(axis=0).astype(int))
+            right_org = tuple((group_right.mean(axis=0) + np.array([0,50])).astype(int))
+            left_org = tuple((group_left.mean(axis=0).astype(int) + np.array([0,50])))
 
-            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,
+            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 1,
                         cv2.LINE_AA)
-            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,
+            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 1,
                         cv2.LINE_AA)
 
         elif len(group_right) > 0:
             right_org = tuple(group_right.mean(axis=0).astype(int))
-            cv2.putText(output, f'{100:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(output, f'{100:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 255, 0), 1, cv2.LINE_AA)
         elif len(group_left) > 0:
             left_org = tuple(group_left.mean(axis=0).astype(int))
-            cv2.putText(output, f'{100:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(output, f'{100:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 255, 0), 1, cv2.LINE_AA)
 
         return output, {
             "status": "success",
@@ -253,7 +253,7 @@ with col2:
 
                     # Download
                     buf = BytesIO()
-                    Image.fromarray(result_img).save(buf, format="JPG")
+                    Image.fromarray(result_img).save(buf, format="JPEG")
                     buf.seek(0)
                     st.download_button(
                         "📥 Download Result",
