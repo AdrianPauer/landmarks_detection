@@ -204,11 +204,18 @@ def process_image(image_input):
             mid_x, mid_y, l_pcts, r_pcts = compute_percentage(v)
             cv2.putText(output, k, (v[1][0] + 40, v[1][1]), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 255), 2,
                         cv2.LINE_AA)
-            mid_lx, mid_ly = (v[0][0] + mid_x) // 2, (v[0][1] + mid_y) // 2
-            mid_rx, mid_ry = (v[1][0] + mid_x) // 2, (v[1][1] + mid_y) // 2
+            # mid_lx, mid_ly = (v[0][0] + mid_x) // 2, (v[0][1] + mid_y) // 2
+            # mid_rx, mid_ry = (v[1][0] + mid_x) // 2, (v[1][1] + mid_y) // 2
 
-            cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 50, mid_ly + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1, cv2.LINE_AA)
-            cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 50, mid_ry + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(0, 255, 255), 1, cv2.LINE_AA)
+            # cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 50, mid_ly + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 255), 1, cv2.LINE_AA)
+            # cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 50, mid_ry + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 255), 1, cv2.LINE_AA)
+
+        # draw a vertical line between midpoints
+        for i in range(len(sorted_midpoints)-1):
+            mid1,mid2 = sorted_midpoints[i],sorted_midpoints[i+1]
+            #cv2.line(output, mid1, mid2, (0, 255, 0), 2)
+            cv2.circle(output, mid1, 2, (0, 0, 255), 5)
+            cv2.circle(output, mid2, 2, (0, 0, 255), 5)
 
         # connect (draw lines )dimples of Venus and scapula
         sc_1, sc_2 = labeled_points['angulus_inferior_scapulae']
