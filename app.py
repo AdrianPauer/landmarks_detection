@@ -266,7 +266,7 @@ def process_image(image_input):
         elif len(group_left) > 0 :
             cv2.putText(output, f'{100:.2f} %', group_right.mean(axis=0).astype(int), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1,cv2.LINE_AA)
 
-        return mask, {
+        return head_areas_mask, {
             "status": "success",
             "count": len(separated),
             "data": dict()
