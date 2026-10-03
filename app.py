@@ -91,7 +91,7 @@ def process_image(image_input):
             [int(right_hip.x * w), int(right_hip.y * h)]
         ]
         hip_point = np.array(hip_points).mean(axis=0)
-        hx, hy = int(hip_point[0]), int(hip_point[1])
+        hip_x, hip_y  = int(hip_point[0]), int(hip_point[1])
         point_coords = np.array([[hx, hy]], dtype=np.float32)
 
         # mask from mobile_sam mask model
@@ -132,7 +132,7 @@ def process_image(image_input):
 
         detected_markers = find_blobs(foreground)
         deduplicated_points = deduplicate_points(np.array(detected_markers))
-        separated, pairs, midpoints, dimple_points = separate_appropriate_points(deduplicated_points)
+        separated, pairs, midpoints, dimple_points = separate_appropriate_points(deduplicated_points,wrist_point,average_head_point, (hip_x, hip_y))
         dimple_point, th_points = separate_and_label_dimple_points(dimple_points)
 
         # copy original img to output
