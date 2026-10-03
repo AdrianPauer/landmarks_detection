@@ -4,8 +4,6 @@ Detects anatomical landmarks in body images
 """
 
 import os
-
-os.environ['OPENCV_VIDEOIO_DEBUG'] = '0'
 import torch
 import streamlit as st
 import cv2
@@ -16,6 +14,8 @@ import pillow_heif
 from mobile_sam import sam_model_registry, SamPredictor
 import sys
 from io import BytesIO
+import math
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Register HEIF opener
@@ -26,7 +26,12 @@ from ex3_blob_detection import (
     find_blobs,
     deduplicate_points,
     separate_appropriate_points,
-    compute_percentage,
+    compute_segment_percentages,
+    separate_and_label_dimple_points,
+    draw_a_dashed_line,
+    line_intersection,
+    get_line_mask_intersection,
+    calculate_angle_numpy,
     LABELS
 )
 
@@ -41,6 +46,8 @@ st.set_page_config(
 def process_image(image_input):
     """Process image - detect blob landmarks"""
     try:
+        error = ''
+
         image_rgb = np.ascontiguousarray(np.array(image_input), dtype=np.uint8)
         MODEL_PATH = os.path.join(os.path.dirname(__file__), "pose_landmarker_heavy.task")
         BaseOptions = mp.tasks.BaseOptions
@@ -59,9 +66,9 @@ def process_image(image_input):
         with PoseLandmarker.create_from_options(options) as landmarker:
             results = landmarker.detect(mp_image)
 
-        # 4. Extract segmentation mask
+        # Extract segmentation mask
         if results.segmentation_masks is None:
-            return None, {"error": "❌ Seems like no human is on photo. Try another photo."}
+            return None, {"error": "❌ Seems like no human is on the uploaded photo. Try another photo."}
 
         # identify head point
         h, w, _ = image_rgb.shape
@@ -74,6 +81,7 @@ def process_image(image_input):
                 if idx >= 10:
                     break
         average_head_point = np.array(head_points).mean(axis=0)
+        wrist_point = int(landmarks[21].x * w), int(landmarks[21].y * h)
 
         # identify hip point
         left_hip = landmarks[23]
@@ -86,12 +94,12 @@ def process_image(image_input):
         hx, hy = int(hip_point[0]), int(hip_point[1])
         point_coords = np.array([[hx, hy]], dtype=np.float32)
 
-        # sam_mask
+        # mask from mobile_sam mask model
         model_type = "vit_t"
         checkpoint = "mobile_sam.pt"
 
         mobile_sam = sam_model_registry[model_type](checkpoint=checkpoint)
-        mobile_sam.to(device="cpu")  # Runs smoothly on server CPU
+        mobile_sam.to(device="cpu")
 
         predictor = SamPredictor(mobile_sam)
         point_labels = np.array([1])
@@ -99,66 +107,63 @@ def process_image(image_input):
         with torch.inference_mode():
             predictor.set_image(image_rgb)
             masks, scores, logits = predictor.predict(point_coords=point_coords, point_labels=point_labels,
-                                                      multimask_output=True)
-        # choose mask with biggest area
+                                                     multimask_output=True)
+        # detect head mask
+        hx, hy = int(average_head_point[0]), int(average_head_point[1])
+        point_coords = np.array([[hx, hy]], dtype=np.float32)
+        with torch.inference_mode():
+            predictor.set_image(image_rgb)
+            head_masks, scores, logits = predictor.predict(point_coords=point_coords, point_labels=point_labels,
+                                                           multimask_output=False)
+
+        error += 'all masks good'
+
+        # choose mask with biggest area (always mask for the whole body pose)
         areas = [mask.sum() for mask in masks]
-        mask = masks[np.argmax(areas)].astype(np.uint8) * 255
+        best_mask = masks[np.argmax(areas)].astype(np.uint8) * 255
 
-        foreground = np.where(mask[..., None], image_rgb, 0)
+        # append the head mask to the body mask
+        head_mask = head_masks[0]
+        new_mask = best_mask.copy()
+        new_mask[head_mask] = 0
 
-        res = find_blobs(foreground)
-        deduplicated_points = deduplicate_points(np.array(res), min_cluster_size=20)
-        separated, pairs, midpoints = separate_appropriate_points(deduplicated_points)
+        # extract only body image as "foreground"
+        foreground = np.where(new_mask[..., None], image_rgb, 0)
+
+        detected_markers = find_blobs(foreground)
+        deduplicated_points = deduplicate_points(np.array(detected_markers))
+        separated, pairs, midpoints, dimple_points = separate_appropriate_points(deduplicated_points)
+        dimple_point, th_points = separate_and_label_dimple_points(dimple_points)
+
+        # copy original img to output
         output = image_rgb.copy()
 
-
-        if len(separated) != 12:
+        if len(separated) != 14:
             for pt in separated:
                 cv2.circle(output, pt, 7, (0, 255, 0), -1)
             return output, {"error": f'detected {len(separated)} points istead of 12 ...'}
 
-        # label points
-
+        # sort the pairs according to y axis and label from top to bottom
         sorted_values = [v for _, v in sorted(zip(midpoints, pairs), key=lambda t: t[0][1])]
-        sorted_midpoints = sorted(midpoints, key=lambda t: t[1])
-
         labeled_points = dict(zip(LABELS, sorted_values))
+        labeled_points['dimples_of_Venus'] = dimple_point
 
+        error += ' labled pts '
         # draw a line between the points
-        for i in range(len(pairs)):
-            c1, c2 = pairs[i]
+        for pair in labeled_points.values():
+            c1, c2 = pair
             cv2.line(output, c1, c2, (0, 255, 0), 2)
-
-        # draw separated points
-        for pt in separated:
-            cv2.circle(output, pt, 4, (0, 255, 0), -1)
 
         # draw labels for the points
         for k, v in labeled_points.items():
-            mid_x, mid_y, l_pcts, r_pcts = compute_percentage(v)
-            cv2.putText(output, k, (v[1][0] + 40, v[1][1]), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 255), 2,
+            cv2.putText(output, k, (v[1][0] + 60, v[1][1]), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 0, 255), 2,
                         cv2.LINE_AA)
-            # mid_lx, mid_ly = (v[0][0] + mid_x) // 2, (v[0][1] + mid_y) // 2
-            # mid_rx, mid_ry = (v[1][0] + mid_x) // 2, (v[1][1] + mid_y) // 2
 
-            # cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 50, mid_ly + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 255), 1, cv2.LINE_AA)
-            # cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 50, mid_ry + 50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 0, 255), 1, cv2.LINE_AA)
-
-        # draw a vertical line between midpoints
-        for i in range(len(sorted_midpoints)-1):
-            mid1,mid2 = sorted_midpoints[i],sorted_midpoints[i+1]
-            #cv2.line(output, mid1, mid2, (0, 255, 0), 2)
-            cv2.circle(output, mid1, 2, (255, 0, 0), 5)
-            cv2.circle(output, mid2, 2, (255, 0, 0), 5)
-
-        # connect (draw lines )dimples of Venus and scapula
+        # connect dimples of Venus and scapula to form trapezium (lichobežník)
         sc_1, sc_2 = labeled_points['angulus_inferior_scapulae']
         dv_1, dv_2 = labeled_points['dimples_of_Venus']
         cv2.line(output, sc_1, dv_1, (0, 255, 0), 2)
         cv2.line(output, sc_2, dv_2, (0, 255, 0), 2)
-
-        # draw a head point
-        #cv2.circle(output, (int(average_head_point[0]), int(average_head_point[1])), 6, (255, 255, 0), -1)
 
         pt1, pt2 = labeled_points['processus_styloideus']
         dx = pt2[0] - pt1[0]
@@ -169,18 +174,15 @@ def process_image(image_input):
 
         p_start = (int(average_head_point[0] - dir_x * line_length), int(average_head_point[1] - dir_y * line_length))
         p_end = (int(average_head_point[0] + dir_x * line_length), int(average_head_point[1] + dir_y * line_length))
-        #cv2.line(output, p_start, p_end, (255, 0, 0), 4)
 
-        pt3,pt4 = labeled_points['margo_lateralis_acromialis']
-        points = np.array([pt3,p_start,p_end,pt4], dtype=np.int32)  # your 4 points, in order
+        pt3, pt4 = labeled_points['margo_lateralis_acromialis']
+        points = np.array([pt3, p_start, p_end, pt4], dtype=np.int32)  # your 4 points, in order
 
-        poly_mask = np.zeros(mask.shape[:2], dtype=np.uint8)
-        cv2.fillPoly(poly_mask, [points], 255)
+        mask = np.zeros(best_mask.shape[:2], dtype=np.uint8)
+        cv2.fillPoly(mask, [points], 255)
 
-        head_areas_mask = cv2.bitwise_and(255-mask, poly_mask)
-        output[head_areas_mask == 255, 0] = 255
-        output[head_areas_mask == 255, 1] = 255
-        output[head_areas_mask == 255, 2] = 0
+        head_areas_mask = cv2.bitwise_and(255 - best_mask, mask)
+        output[head_areas_mask == 255] = (0, 255, 255)
 
         ys, xs = np.where(head_areas_mask > 0)
         coords = np.column_stack((xs, ys))
@@ -192,21 +194,119 @@ def process_image(image_input):
             gr_pcts = len(group_right) / (len(group_right) + len(group_left)) * 100
             gl_pcts = len(group_left) / (len(group_right) + len(group_left)) * 100
 
-            # Cast mean numpy arrays to python tuples of ints
-            right_org = tuple((group_right.mean(axis=0) + np.array([0,60])).astype(int))
-            left_org = tuple((group_left.mean(axis=0).astype(int) + np.array([0,60])))
+            right_pos_x, right_pos_y = group_right[:, 0].mean(), group_right[:, 1].max() + 20
+            right_pos = (int(right_pos_x), int(right_pos_y))
+            left_pos_x, left_pos_y = group_left[:, 0].mean(), group_left[:, 1].max() + 20
+            left_pos = (int(left_pos_x), int(left_pos_y))
 
-            cv2.putText(output, f'{gr_pcts:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2,
+            cv2.putText(output, f'{gr_pcts:.1f} %', right_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1,
                         cv2.LINE_AA)
-            cv2.putText(output, f'{gl_pcts:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2,
+            cv2.putText(output, f'{gl_pcts:.1f} %', left_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1,
                         cv2.LINE_AA)
-
         elif len(group_right) > 0:
-            right_org = tuple(group_right.mean(axis=0).astype(int))
-            cv2.putText(output, f'{100:.2f} %', right_org, cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 255, 0), 1, cv2.LINE_AA)
+            right_pos_x, right_pos_y = group_right[:, 0].mean(), group_right[:, 1].max() + 20
+            right_pos = (int(right_pos_x), int(right_pos_y))
+
+            cv2.putText(output, f'{100:.1f} %', right_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1, cv2.LINE_AA)
         elif len(group_left) > 0:
-            left_org = tuple(group_left.mean(axis=0).astype(int))
-            cv2.putText(output, f'{100:.2f} %', left_org, cv2.FONT_HERSHEY_SIMPLEX, 1,(255, 255, 0), 1, cv2.LINE_AA)
+            left_pos_x, left_pos_y = group_left[:, 0].mean(), group_left[:, 1].max() + 20
+            left_pos = (int(left_pos_x), int(left_pos_y))
+
+            cv2.putText(output, f'{100:.1f} %', left_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1, cv2.LINE_AA)
+
+        # draw th points and dashed line
+        cv2.circle(output, th_points[1], 4, (255, 0, 0), -1)
+        cv2.circle(output, th_points[0], 4, (255, 0, 0), -1)
+        draw_a_dashed_line(output, th_points[0], th_points[1])
+
+        error += ' head percentages '
+        # compute percentages for line intersections at the back
+        for key in ['dimples_of_Venus', 'angulus_inferior_scapulae']:
+            body_part_pts = labeled_points[key]
+            intersection = line_intersection(body_part_pts, th_points)
+            compute_segment_percentages(body_part_pts, intersection)
+            l_pcts, r_pcts = compute_segment_percentages(body_part_pts, intersection)
+
+            # compute place to draw percentages and draw
+            pt1, pt2 = body_part_pts
+            mid_lx, mid_ly = (pt1[0] + intersection[0]) // 2, (pt1[1] + intersection[1]) // 2
+            mid_rx, mid_ry = (pt2[0] + intersection[0]) // 2, (pt2[1] + intersection[1]) // 2
+
+            cv2.circle(output, intersection, 4, (0, 0, 0), -1)
+            cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 40, mid_ly - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0),1, cv2.LINE_AA)
+            cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 10, mid_ry - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0),1, cv2.LINE_AA)
+
+            # line and mask intersection
+            pt1, pt2 = labeled_points['processus_styloideus']
+            x1, y1 = pt1
+            x2, y2 = pt2
+            # Calculate vector P1 -> P2
+            dx = (x2 - x1) / math.dist(pt1, pt2)
+            dy = (y2 - y1) / math.dist(pt1, pt2)
+
+        for body_part_pt in [labeled_points['epicodyles'][0], labeled_points['epicodyles'][1],
+                             labeled_points['processus_styloideus'][0], labeled_points['processus_styloideus'][1]]:
+            intersection = body_part_pt
+            pt_min_x, pt_max_x = get_line_mask_intersection(new_mask, body_part_pt, (dx, dy))
+            cv2.line(output, pt_min_x, pt_max_x, (255, 0, 0), 2)
+            cv2.circle(output, pt_min_x, 2, (0, 0, 0), -1)
+            cv2.circle(output, pt_max_x, 2, (0, 0, 0), -1)
+            cv2.circle(output, intersection, 2, (0, 0, 0), -1)
+
+            l_pcts, r_pcts = compute_segment_percentages((pt_min_x, pt_max_x), intersection)
+
+            pt1, pt2 = pt_min_x, pt_max_x
+            mid_lx, mid_ly = (pt1[0] + intersection[0]) // 2, (pt1[1] + intersection[1]) // 2
+            mid_rx, mid_ry = (pt2[0] + intersection[0]) // 2, (pt2[1] + intersection[1]) // 2
+
+            cv2.putText(output, f"{l_pcts:.2f} %", (mid_lx - 80, mid_ly - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (255, 0, 0), 1, cv2.LINE_AA)
+            cv2.putText(output, f'{r_pcts:.2f} %', (mid_rx - 20, mid_ry - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+                        (255, 0, 0), 1, cv2.LINE_AA)
+
+            # compute distance arm points -> edge
+            for pt, direction in (labeled_points['margo_lateralis_acromialis'][0], 'left'), (
+                    labeled_points['margo_lateralis_acromialis'][1], 'right'):
+                pt_min_x, pt_max_x = get_line_mask_intersection(new_mask, pt, (dx, dy), direction)
+                cv2.line(output, pt_min_x, pt_max_x, (255, 0, 0), 2)
+                cv2.circle(output, pt_min_x, 2, (0, 0, 0), -1)
+                cv2.circle(output, pt_max_x, 2, (0, 0, 0), -1)
+                mid_lx, mid_ly = (pt_min_x[0] + pt_max_x[0]) // 2, (pt_min_x[1] + pt_max_x[1]) // 2
+                cv2.putText(output, f"{pt_max_x[0] - pt_min_x[0]} px", (mid_lx - 10, mid_ly - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 1, cv2.LINE_AA)
+
+            # compute the angle arm, elbow, wrist and draw
+            for index, (a, b, c) in enumerate(
+                    [(labeled_points['processus_styloideus'][0], labeled_points['epicodyles'][0],
+                      labeled_points['margo_lateralis_acromialis'][0]),
+                     (labeled_points['margo_lateralis_acromialis'][1], labeled_points['epicodyles'][1],
+                      labeled_points['processus_styloideus'][1])]):
+
+                angle = calculate_angle_numpy(a, b, c)
+                if index == 1:
+                    angle = 360 - angle
+                    ba = np.array(b) - np.array(a)
+                    bc = np.array(b) - np.array(c)
+                    text_pos = (b[0] - 70, b[1] + 30)
+                else:
+                    ba = np.array(a) - np.array(b)
+                    bc = np.array(c) - np.array(b)
+                    text_pos = (b[0] + 10, b[1] + 30)
+
+                draw_a_dashed_line(output, a, b, color=(0, 255, 255))
+                draw_a_dashed_line(output, b, c, color=(0, 255, 255))
+
+                start_angle = np.degrees(np.arctan2(ba[1], ba[0]))
+                end_angle = np.degrees(np.arctan2(bc[1], bc[0]))
+
+                if abs(end_angle - start_angle) > 180:
+                    if start_angle < end_angle:
+                        start_angle += 360
+                    else:
+                        end_angle += 360
+
+                cv2.ellipse(output, center=b, axes=(30, 30), angle=0, startAngle=min(start_angle, end_angle),endAngle=max(start_angle, end_angle), color=(0, 255, 255), thickness=1,lineType=cv2.LINE_AA)
+                cv2.putText(output, str(angle) + '°', text_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 1,cv2.LINE_AA)
 
         return output, {
             "status": "success",
