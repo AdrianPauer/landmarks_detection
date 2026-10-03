@@ -138,7 +138,7 @@ def process_image(image_input):
         # copy original img to output
         output = image_rgb.copy()
 
-        if len(separated) != 14:
+        if len(separated) != 16:
             for pt in separated:
                 cv2.circle(output, pt, 7, (0, 255, 0), -1)
             return output, {"error": f'detected {len(separated)} points istead of 12 ...'}
