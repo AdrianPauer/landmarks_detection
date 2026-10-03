@@ -92,7 +92,7 @@ def process_image(image_input):
         ]
         hip_point = np.array(hip_points).mean(axis=0)
         hip_x, hip_y  = int(hip_point[0]), int(hip_point[1])
-        point_coords = np.array([[hx, hy]], dtype=np.float32)
+        point_coords = np.array([[hip_x, hip_y]], dtype=np.float32)
 
         # mask from mobile_sam mask model
         model_type = "vit_t"
