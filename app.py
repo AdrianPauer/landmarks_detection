@@ -15,14 +15,7 @@ from mobile_sam import sam_model_registry, SamPredictor
 import sys
 from io import BytesIO
 import math
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-# Register HEIF opener
-pillow_heif.register_heif_opener()
-
-# Import blob detection functions
-from ex3_blob_detection import (
+from detection_and_drawing import (
     find_blobs,
     deduplicate_points,
     separate_appropriate_points,
@@ -34,7 +27,12 @@ from ex3_blob_detection import (
     calculate_angle_numpy,
     LABELS
 )
+from input_landmarks import get_landmarks
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Register HEIF opener
+pillow_heif.register_heif_opener()
 # Page config
 st.set_page_config(
     page_title="Blob Detection",
@@ -46,8 +44,6 @@ st.set_page_config(
 def process_image(image_input):
     """Process image - detect blob landmarks"""
     try:
-        error = ''
-
         image_rgb = np.ascontiguousarray(np.array(image_input), dtype=np.uint8)
         MODEL_PATH = os.path.join(os.path.dirname(__file__), "pose_landmarker_heavy.task")
         BaseOptions = mp.tasks.BaseOptions
@@ -116,8 +112,6 @@ def process_image(image_input):
             head_masks, scores, logits = predictor.predict(point_coords=point_coords, point_labels=point_labels,
                                                            multimask_output=False)
 
-        error += 'all masks good'
-
         # choose mask with biggest area (always mask for the whole body pose)
         areas = [mask.sum() for mask in masks]
         best_mask = masks[np.argmax(areas)].astype(np.uint8) * 255
@@ -130,7 +124,8 @@ def process_image(image_input):
         # extract only body image as "foreground"
         foreground = np.where(new_mask[..., None], image_rgb, 0)
 
-        detected_markers = find_blobs(foreground)
+        # new function for input the points by hand
+        detected_markers = get_landmarks(image_rgb)
         deduplicated_points = deduplicate_points(np.array(detected_markers))
         separated, pairs, midpoints, dimple_points = separate_appropriate_points(deduplicated_points,wrist_point,average_head_point, (hip_x, hip_y))
         dimple_point, th_points = separate_and_label_dimple_points(dimple_points)
@@ -148,7 +143,6 @@ def process_image(image_input):
         labeled_points = dict(zip(LABELS, sorted_values))
         labeled_points['dimples_of_Venus'] = dimple_point
 
-        error += ' labled pts '
         # draw a line between the points
         for pair in labeled_points.values():
             c1, c2 = pair
@@ -219,7 +213,6 @@ def process_image(image_input):
         cv2.circle(output, th_points[0], 4, (255, 0, 0), -1)
         draw_a_dashed_line(output, th_points[0], th_points[1])
 
-        error += ' head percentages '
         # compute percentages for line intersections at the back
         for key in ['dimples_of_Venus', 'angulus_inferior_scapulae']:
             body_part_pts = labeled_points[key]

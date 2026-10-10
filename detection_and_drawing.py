@@ -1,11 +1,7 @@
 import cv2
-import mediapipe as mp
-import argparse
-import torch
 import math
 import numpy as np
-from mobile_sam import sam_model_registry, SamPredictor
-import os
+import json
 
 LABELS = ['heels','knees','angulus_inferior_scapulae','margo_lateralis_acromialis','epicodyles','processus_styloideus']
 
